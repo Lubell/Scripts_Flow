@@ -1,0 +1,19 @@
+#!/bin/sh
+#cropper
+
+echo "Enter Patient ID"
+read patient
+
+#Takes location from script patient_location and makes Registration folder
+location=`/home/knight/ecog/Scripts/patient_location $patient`
+
+echo "Enter name of Image file to be cropped: "
+read MR
+
+echo "Enter Recon folder name: "
+read rfolder
+
+sh /srv/local/bioimagesuite/bioimagesuite30_64/bin/bis_cropimage --inp /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rfolder/"$MR" --out /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rfolder/"$MR"_crop --autocrop on
+
+
+

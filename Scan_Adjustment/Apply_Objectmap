@@ -1,0 +1,49 @@
+#!/bin/sh
+# This script condenses the steps necessary in manually altering an MR image during the # process of creating a Bext. First an object map must be made manually in BioImage    # Suite. Second, call this script, this script will invert the object map and then     # apply the inverted objectmap to the MR; thereby removing the desired tissue from the # original MR. 
+#feed objectmap and MR image in. Output will be inverse objectmap applied to MR image
+echo "Enter Patient ID"
+read patient
+
+#Takes location from script patient_location and makes Registration folder
+location=`/home/knight/ecog/Scripts/patient_location $patient`
+
+cd /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/
+Lfolder=$(ls -d Recon_*)
+PS3='Select which Recon folder contains the files: '
+
+echo
+
+select Rfolder in $Lfolder
+do
+rec="$Rfolder"
+break
+done
+
+cd /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec/IP/Scans
+ob=$(pwd)
+omm=$(ls *.nii*)
+PS3='Select objectmap you want to use: '
+
+echo
+
+select obj in $omm
+do
+om="$obj"
+break
+done
+ 
+mrr=$(ls /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec/*.nii.gz)
+PS3='Select the MRI file you want the objectmap applied to'
+
+echo
+
+select MRfile in $mrr
+do
+mr="$MRfile"
+break
+done
+
+sh /srv/local/bioimagesuite/bioimagesuite30_64/bin/bis_piecewiseimagemap --inp $ob/$om --out $ob/Inv_"$om" --on1 1 --x1 0 --y1 1 --on2 1 --x2 1 --y2 0
+
+fslmaths $ob/$mr -mul $ob/Inv_"$om" $ob/"$mr"_Man_Trans.nii.gz
+echo "done"

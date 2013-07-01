@@ -1,0 +1,26 @@
+#!/bin/sh
+#Brain Extraction tool. Enter patient name, Recon folder, file name, and output name.
+echo "Enter Patient ID"
+read patient
+
+#Takes location from script patient_location and makes Registration folder
+location=`/home/knight/ecog/Scripts/patient_location $patient`
+
+cd /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/
+Lfolder=$(ls -d Recon_*)
+PS3='Select which Recon folder contains the files you want to register: '
+
+echo
+
+select Rfolder in $Lfolder
+do
+folder="$Rfolder"
+break
+done
+
+echo "Enter name of file to be stripped: "
+read input
+
+bet2 /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$folder/$input /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$folder/"$input"_stripped -v -o -f 0.3 -g 0.0
+
+echo "...done"

@@ -1,0 +1,57 @@
+#!/bin/bash
+for sites in "Childrens" "Hopkins" "UCSF" "CPMC" "Stanford" "Wadsworth"
+do
+change=$(find /home/knight/ecog/DATA_FOLDER/$sites -maxdepth 5 -mindepth 3 -mtime -1 -type f)
+
+if echo "$sites" | grep -q -i "Childrens"
+then
+pre=CH
+elif echo "$sites" | grep -q -i "Hopkins"
+then
+pre=JH
+elif echo "$sites" | grep -q -i "UCSF"
+then
+pre=GP
+elif echo "$sites" | grep -q -i "CPMC"
+then
+pre=CP
+elif echo "$sites" | grep -q -i "Stanford"
+then
+pre=ST
+elif echo "$sites" | grep -q -i "Wadsworth"
+then
+pre=WC
+fi
+
+cd /home/knight/ecog/DATA_FOLDER/$sites
+pat=$(ls -d "$pre"*)
+
+
+for change_text in $pat
+do
+for change_file in $change
+do
+if echo "$change_file" | grep -q -i "$change_text"
+then
+rev=/home/knight/ecog/DATA_FOLDER/$sites/$change_text/3D_Images/Revision_History.txt
+someone=$(stat -c %U $change_file)
+the_change="$someone $change_file"
+when=$(date)
+if [ ! -e $rev ]
+then
+cd /home/knight/ecog/DATA_FOLDER/$sites/$change_text/3D_Images/
+cat > Revision_wistory.txt<<<"$the_change"
+cat - Revision_wistory.txt<<<"..." > Revision_History.txt
+rm Revision_wistory.txt
+else
+cd /home/knight/ecog/DATA_FOLDER/$sites/$change_text/3D_Images/
+mv Revision_History.txt Revision_Wistory.txt
+cat - Revision_Wistory.txt<<<"$the_change" > Revision_History.txt
+cat - Revision_History.txt<<<"$when" > Revision_Wistory.txt
+cat - Revision_Wistory.txt<<<"..." > Revision_History.txt
+rm Revision_Wistory.txt
+fi
+fi
+done
+done
+done

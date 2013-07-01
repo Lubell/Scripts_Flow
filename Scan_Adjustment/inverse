@@ -1,0 +1,18 @@
+#!/bin/sh
+location=$1
+patient=$2
+rec=$3
+ref=$4
+folder=$5
+
+mkdir /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec/IP/Registrations/$folder/Inverse
+#uses bis_combinetransformations command from bioimagesuite 3 to make inverse registrations of all files in the parent folder of inverse
+
+cd /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec/IP/Registrations/$folder
+
+generate_list=$(ls *_xform.*)
+
+for grid in $generate_list
+do
+sh /srv/local/bioimagesuite/bioimagesuite30_64/bin/bis_combinetransformations --inp /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec/$ref --inp2 /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec/IP/Registrations/$folder/"$grid" --out /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec/IP/Registrations/$folder/Inverse/Inv_"$grid" --inverse 1
+done

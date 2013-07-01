@@ -1,0 +1,148 @@
+#!/bin/sh
+# The purpose of this script is to take newly accquired subjects data and anonymize is and convert it to niftis first the script will anonymize the data. This script should be run after mkdirs, located in the Scripts/anatomy folder has been run.
+call_from_start=$1
+patient=$2
+
+E_WRONG_ARGS=95
+
+if [[ $call_from_start -gt 0 ]]
+then
+call_from_start=2
+else
+call_from_start=1
+echo "Enter Patient ID"
+read patient
+fi
+
+PS3='Select where the Dicom files are located: '
+
+echo
+
+select locational in "Cluster" "Local_computer" "Help"
+do
+locorig=$locational
+break
+done
+
+if echo "$locorig" | grep -q -i -e "Cluster"
+then
+#Takes location from script patient_location and makes Dicom_anon folder
+location=`/home/knight/ecog/Scripts/patient_location $patient`
+
+echo "Enter full path to Dicom files on Cluster or type Dicom_temp"
+echo "if you just used this script to import Dicoms from a local computer: "
+read orig
+
+echo "Shred original? BE CAREFUL !!!: type yes or no"
+read killit
+
+if echo "$orig" | grep -q -i -e "dicom_temp"
+then
+/home/knight/ecog/Scripts/anatomy/anon_ivd_dicoms.py /home/knight/ecog/DATA_FOLDER/merge/Dicom_temp/ /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/Dicom_anon/
+killtemp=1;
+else
+/home/knight/ecog/Scripts/anatomy/anon_ivd_dicoms.py $orig /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/Dicom_anon/
+fi
+	if [ echo "$killit" | grep -q -i -e "y" ] && [ "$killtemp" -eq 0 ]
+	then	
+	shred -u -v /home/knight/ecog/DATA_FOLDER/merge/Dicom_temp/
+	elif echo "$killit" | grep -q -i -e "y"
+	then
+	shred -u -v $orig
+	fi
+
+echo "Now that the Dicoms have been anonymized they will be converted to .nii.gz nifti format" 
+cd /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images
+
+generate=$(ls -d Dicom*)
+for listless in $generate
+do
+generate_list=$(ls $listless/*.dcm )
+	for list in $generate_list
+	do
+	Dicom="$list"
+	done
+
+mri_convert -it dicom -ot nii $Dicom /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/MR/"$patient"_"$listless".nii.gz 
+done
+
+
+
+
+#End of Cluster implementation and BEGIN LOCAL_COMP script portion
+
+
+
+elif echo "$locorig" | grep -q -e "Local_computer"
+then
+location=`/Volumes/HWNI\ Home\ Directory/ecog/Scripts/patient_location $patient`
+echo "Enter name of full path to Dicom folder"
+read orig
+
+
+echo "Enter name of cluster home directory"
+read clustername
+echo
+
+
+cd /Volumes/"$clustername"/ecog/DATA_FOLDER/merge
+mkdir Dicom_temp
+
+cp -R $orig /Volumes/$clustername/ecog/DATA_FOLDER/merge
+
+
+echo "Because of the limitations of working across platforms importing Dicoms"
+echo "from a local machine to the cluster is all that this script can do."
+echo "After using this script to import the Dicoms, access the cluster"
+echo "using NX and run this script again to anonymize, secure delete, and"
+echo "convert the dicoms to NIFTI files."
+
+else
+
+clear
+echo "Help: "
+echo "After determing the way in which you are importing and anonymizing files,"
+echo "either from your local machine or from the graphical desktop environment"
+echo "accessing the cluster, you'll be asked to provide the complete path to the"
+echo "location of where the non-anonymized Dicoms are."
+echo ""
+echo "IT IS EXTREMELY IMPORTANT to make a link to the ecog folder in your own home"
+echo "folder if you plan on importing and anoning from your local machine."
+echo "Just open the terminal and type: "
+echo "ln -s /home/knight/ecog /home/knight/<your cluster name>"
+echo "Press m for more help else press q to leave"
+read keyhelp
+if echo "$keyhelp" | grep -q -i -e "q"
+	then
+	echo "Recall the script to get moving again"
+	exit $E_WRONG_ARGS
+	else
+clear
+echo ""
+echo "The first example is a path to patient dicom files that are already on the cluster but in the merge folder" 
+echo "example: /home/knight/ecog/DATA_FOLDER/merge/<the name of folder with dicoms>"
+echo "Dicom files can technically be stored anywhere on the cluster;"
+echo"but if they are not already anonymized THEY MUST"
+echo "be stored in the merge folder."
+echo "The second example is what it would look like if the files were on a CD-rom on your local computer"
+echo "In this case the user of this script should already be connected to the"
+echo "server using SSHFS or a program like macfusion and would first open"
+echo "the terminal on their local machine and using the sh command call "
+echo "this script."
+echo "After the script starts it will ask for a full path which should look like this:"
+echo "example: /Volumes/<CD-rom_name>/Folder_with_Dicoms"
+echo ""
+echo "Recall the script to get moving again "
+exit $E_WRONG_ARGS
+fi
+fi
+
+if [[ $call_from_start -gt 1 ]]
+then
+echo "Go to the MR/CT folder of $patient and choose the best MR and CT"
+echo "scans that the Dicoms provided. Then call the Recon Script again."
+else
+exit $E_WRONG_ARGS
+fi
+ 
+

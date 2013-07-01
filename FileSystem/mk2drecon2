@@ -1,0 +1,13 @@
+#!/bin/sh
+#Takes a patient code and makes standardized directories for it
+patient=$1
+view=$2
+
+#Takes location from script patient_location
+location=`/home/knight/ecog/Scripts/patient_location $patient`
+
+mkdir /home/knight/ecog/DATA_FOLDER/$location/$patient/2D_Images/Recon_$view
+mkdir /home/knight/ecog/DATA_FOLDER/$location/$patient/2D_Images/Recon_$view/Brains_With_Elecs/
+mkdir /home/knight/ecog/DATA_FOLDER/$location/$patient/2D_Images/Recon_$view/Blank_Extracted_Brains/
+
+echo "...done"

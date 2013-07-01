@@ -1,0 +1,107 @@
+#!/bin/sh
+# creates a blended image of two .nii.gz files using the registration file (.mat or .grd) of your choice
+echo "Enter Patient ID"
+read patient
+
+#Takes location from script patient_location
+location=`/home/knight/ecog/Scripts/patient_location $patient`
+
+cd /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/
+Lfolder=$(ls -d Recon_*)
+PS3='Select which Recon folder contains the files you want to blend: '
+
+echo
+
+select Rfolder in $Lfolder
+do
+rec="$Rfolder"
+break
+done
+
+cd /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec
+
+generate_list=$(ls *.nii.*)
+
+
+PS3='Which images do you want to blend: '
+
+echo
+
+select format in "MR_CT" "Bext_CT" "MNI_Bext"
+do
+folder="$format"_Reg
+
+if echo "$format" | grep -q -i -e "MR_CT"
+then
+	PS3='Choose MR: '
+	echo
+	select MR in $generate_list
+	do
+	ref=$MR
+	break
+	done
+
+	PS3='Choose CT: '
+	echo
+	select CT in $generate_list
+	do
+	trans=$CT
+	break
+	done
+
+elif echo "$format" | grep -q -i -e "Bext_CT"
+then	
+	PS3='Choose Bext: '
+	echo
+	select Bext in $generate_list
+	do
+	ref=$Bext
+	break
+	done
+
+	PS3='Choose CT: '
+	echo
+	select CT in $generate_list
+	do
+	trans=$CT
+	break
+	done
+
+else
+	PS3='Choose MNI: '
+	echo
+	select MNI in $generate_list
+	do
+	ref=$MNI
+	break
+	done
+
+	PS3='Choose Bext: '
+	echo
+	select Bext in $generate_list
+	do
+	trans=$Bext
+	break
+	done
+fi
+break
+done
+
+cd /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec/IP/Registrations/$folder
+
+allreg=$(ls *_xform.*)
+
+PS3='Select which Registration file will be used to make the blend: '
+
+echo
+
+select thereg in $allreg
+do
+reg="$thereg"
+break
+done
+
+cd /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec
+
+sh /srv/local/bioimagesuite/bioimagesuite30_64/bin/bis_blendimage --inp $ref --inp2 $trans --inp3 Registrations/$folder/$reg --out "$patient"_"$reg"_blend.nii.gz
+

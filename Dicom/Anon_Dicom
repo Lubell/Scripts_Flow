@@ -1,0 +1,65 @@
+#!/bin/sh
+#anon and convert and move dicom files
+
+echo "Enter Patient ID"
+read patient
+
+#Takes location from script patient_location and makes Registration folder
+location=`/home/knight/ecog/Scripts/patient_location $patient`
+
+PS3='Select where the Dicom files are located: '
+
+echo
+
+select locational in "DATA_FOLDER/$location/$patient" "ecog_merge" "Other" "Help"
+do
+locorig=$locational
+break
+done
+
+if echo "$locorig" | grep -q -i -e "DATA_FOLDER"
+	then
+
+
+	cd /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/
+
+	Lfolder=$(ls -d * )
+
+	PS3='Select which Folder contains the Files: '
+	
+	echo
+	
+	select Rfolder in "$Lfolder"
+	do
+	rec=$Rfolder
+	break
+	done
+	
+	
+	cd /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec
+	
+	fFolder=$(ls -d * )
+	
+	if echo "$fFolder" | grep -q -i -e "./"
+	then
+	DicomFile=$(ls -B)
+	OneDicom=( $(cat "$DicomFile") )
+
+	for DD1 in $(seq 0 $((${#OneDicom[@]} - 1)))
+	do
+	DD=$DD1
+	break
+	done
+	
+	else
+	PS3='Select which Folder contains the files: '
+		
+	echo
+		
+	select Rfolder in $fFolder
+	do
+	DD=$Rfolder
+	break
+	done
+	fi
+fi

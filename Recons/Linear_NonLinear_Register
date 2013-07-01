@@ -1,0 +1,164 @@
+#!/bin/sh
+#Performs linear and NonLinear registration with bioimagesuite3
+#Takes patient code, name of recon_folder where images are stored, type of file for 
+#Reference image (can be MR, CT, MNI), Transform file type (can be MR, CT, MNI), and if you want inverses of the grids and matrices put a letter in the fifth option or leave blank for no. 
+echo "Help?(y/n): "
+read helper
+
+if echo "$helper" | grep -q -i "y"
+then
+echo "When two images are registered the intent is to create a matrix or congruency file that would potentially allow the user to reslice, that is change, one image so that it has the same coordinates and matches a specified image.  The reference image is the one you will pick first, this the static file.  The transform image is the dynamic file, which you choose second. This image is then warped and moved until it matches the reference file. The orginal transform image is left as it was, but the steps taken to match the transform image to the reference image are recorded in a matrix/congruency file. This matrix/congruency file is what we then use to make the electrode grid, which was made in the space of the transform image, fit the coordinates or space of the reference image."
+echo "..."
+echo "..."
+echo "If the registration keeps spitting out empty grids, i.e. - all zeros, this means that one of the images is too filled with ambient voxels. Try raising the thresholding of the transform image till an image emerges. Then save the thresholded image and rerun the registration using the thresholded image file."
+echo "."
+echo "."
+echo "."
+fi
+
+
+echo "Enter Patient ID"
+read patient
+
+#Takes location from script patient_location
+location=`/home/knight/ecog/Scripts/patient_location $patient`
+
+cd /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/
+Lfolder=$(ls -d Recon_*)
+PS3='Select which Recon folder contains the files you want to register: '
+
+echo
+
+select Rfolder in $Lfolder
+do
+rec="$Rfolder"
+break
+done
+
+
+cd /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec
+
+generate_list=$(ls *.nii.*)
+  
+PS3='What style of Registration do you want to perform: '
+
+echo
+
+select format in "MR_CT" "Bext_CT" "MNI_Bext"
+do
+folder="$format"_Reg
+
+if echo "$format" | grep -q -i -e "MR_CT"
+then
+	PS3='Choose MR reference image: '
+	echo
+	select MR in $generate_list
+	do
+	ref=$MR
+	break
+	done
+
+	PS3='Choose CT transform image: '
+	echo
+	select CT in $generate_list
+	do
+	trans=$CT
+	break
+	done
+
+elif echo "$format" | grep -q -i -e "Bext_CT"
+then	
+	PS3='Choose Bext reference image: '
+	echo
+	select Bext in $generate_list
+	do
+	ref=$Bext
+	break
+	done
+
+	PS3='Choose CT transform image: '
+	echo
+	select CT in $generate_list
+	do
+	trans=$CT
+	break
+	done
+
+else
+	PS3='Choose MNI reference image: '
+	echo
+	select MNI in $generate_list
+	do
+	ref=$MNI
+	break
+	done
+
+	PS3='Choose Bext transform image: '
+	echo
+	select Bext in $generate_list
+	do
+	trans=$Bext
+	break
+	done
+fi
+break
+done
+
+echo "Would you like to have inverses made?(yes/no)"
+read inverse
+
+#Checks for pre-exsiting Registrations folder
+#if echo "$ref" | grep -q -i -e "MR"
+#then
+#folder=/home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec/IP/Registrations/MR_CT_Reg
+#elif echo "$ref" | grep -q -i -e "Bext"
+#then
+#folder=/home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec/IP/Registrations/Bext_CT_Reg
+#else
+#folder=/home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec/IP/Registrations/MNI_Bext_Reg
+#fi
+checker=/home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec/IP/Registrations/$folder
+
+
+E_WRONG_ARGS=95
+if [[ -e $checker ]]
+then
+echo "A folder already exists for this registration do you wish to delete its contents and proceed?(y/n): "
+read Keypress
+	if echo "$Keypress" | grep -q -i -e "y"
+	then
+	rm -R $checker
+	mkdir /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec/IP/Registrations/$folder
+	else
+	echo "Well you better rename $fchecker or move it then..."
+	echo "Ciao"
+	echo "...done"
+	exit $E_WRONG_ARGS
+	fi
+else
+	mkdir /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec/IP/Registrations
+	mkdir /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec/IP/Registrations/$folder
+fi
+
+#compute lin Reg	
+for style in rigid affine similarity affine2d rigid2d similarity2d
+do
+sh /srv/local/bioimagesuite/bioimagesuite30_64/bin/bis_linearintensityregister --inp $ref --inp2 $trans --out /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec/IP/Registrations/$folder/"$format"_Lin_"$style"_xform.matr --mode "$style" --numberoflevels 3 --resolution 1.5 --useinitial 0 --reslimage Resliced --metric NMI --useweightimage 0 --iterations 15 --resolutionrate 2 --autonormalize 1 --optimization default --numberofbins 64 --numberofsteps 1 --stepsize 1.0 --autooptscalefactor 1 --optscalefactor 1.0
+done
+
+#Then computes nonlin reg and saves
+
+for style in none rigid affine similarity
+do
+sh /srv/local/bioimagesuite/bioimagesuite30_64/bin/bis_nonlinearintensityregister --inp $ref --inp2 $trans --out /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec/IP/Registrations/$folder/"$format"_NonLin_"$style"_xform.grd --initialmode "$style" --spacing 15.0 --smoothness 0.001 --numberoflevels 3 --resolution 1.5 --useinitial 0 --reslimage Resliced --metric NMI --useweightimage 0 --iterations 15 --resolutionrate 2 --autonormalize 1 --optimization default --numberofbins 64 --spacingrate 2.0 --extralevels 0 --windowsize 1.0 --numberofsteps 1 --stepsize 1.0
+done
+
+cat > /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rec/IP/Registrations/$folder/Files_Used_In_Reg.txt<<<"The reference file used was $ref and the transformation file used was $trans"
+
+
+if echo "$inverse" | grep -q -i -e "y"
+then
+sh /home/knight/lubell/Jamie_Scripts/Scan_Adjustment/inverse $location $patient $rec $ref $folder
+fi
+
+echo "...done"

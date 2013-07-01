@@ -1,0 +1,71 @@
+#!/bin/sh
+# This Script takes the names of the CT and MR files that have been chosen as the # the MR and CT to be used and begins the recon process.  
+# CT and MR files must be in .nii format not .img and .hdr
+# Inputs are 1) Patient name 2) CT name 3) MR name 4) Clean up option enter 1 for yes 0 for no (deletes anon .nii files not being used)
+echo "Enter Patient ID"
+read patient
+
+#Takes location from script patient_location
+location=`/home/knight/ecog/Scripts/patient_location $patient`
+
+MRS=$(ls /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/MR)
+CTS=$(ls /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/CT)
+PS3='Choose MR image: '
+	echo
+	select MRt in $MRS
+	do
+	MR=$MRt
+	break
+	done
+
+PS3='Choose CT image: '
+	echo
+	select CTt in $CTS
+	do
+	CT=$CTt
+	break
+	done
+
+
+echo "Perform perliminary strip on MR? yes/no: "
+read strip
+
+
+rmonth=$(date "+%b")
+ryear=$(date "+%Y")
+rfolder=Recon_"$rmonth"_"$ryear"
+
+mkdir /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/"$rfolder"
+
+cp /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/CT/$CT /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/"$rfolder"/"$patient"_CT.nii.gz 
+mv /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/CT/$CT /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/CT/"$patient"_CT.nii.gz
+
+cp /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/MR/$MR /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/"$rfolder"/"$patient"_MR.nii.gz 
+mv /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/MR/$MR /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/MR/"$patient"_MR.nii.gz
+
+ln -s /home/knight/ecog/DATA_FOLDER/MNI_Brain/MNI.nii.gz /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rfolder/MNI.nii.gz
+
+mkdir /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/"$rfolder"/IP
+mkdir /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/"$rfolder"/IP/Scans
+mkdir /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/"$rfolder"/IP/Mgrids
+
+
+
+if echo "$strip" | grep -q -i -e "y"
+then
+
+bet2 /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rfolder/"$patient"_MR.nii.gz /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rfolder/IP/Scans/"$patient"_MR_stripped.nii.gz -v -o -f 0.3 -g 0.0
+
+echo "First Strip Done"
+
+bet2 /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rfolder/"$patient"_MR_stripped.nii.gz /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rfolder/IP/Scans/"$patient"_MR_stripped_stripped.nii.gz -v -o -f 0.3 -g 0.0 
+
+echo "Stripping done, will now crop image"
+sh /srv/local/bioimagesuite/bioimagesuite30_64/bin/bis_cropimage --inp /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rfolder/IP/Scans/"$patient"_MR_stripped_stripped.nii.gz --out /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rfolder/IP/Scans/"$patient"_MR_cropped_stripped_stripped.nii.gz --autocrop on
+fi
+
+cp /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rfolder/IP/Scans/"$patient"_MR_cropped_stripped_stripped.nii.gz /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rfolder/"$patient"_Bext_preliminary.nii.gz
+
+
+cd /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/$rfolder/
+thunar

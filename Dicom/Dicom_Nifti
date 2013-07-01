@@ -1,0 +1,45 @@
+#!/bin/sh
+# a quick convert for Dicom to Nifti
+
+echo "Enter Patient ID"
+read patient
+
+location=`/home/knight/ecog/Scripts/patient_location $patient`
+
+
+echo "Are Dicoms stored in an Anon_Dicom Directory? (y/n)"
+read loc
+
+if echo "$loc" | grep -q -i "y"
+then
+cd /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/Anon_Dicom
+Lfolder=$(ls )
+PS3='Select folder that contains the Dicom files: '
+
+echo
+
+select Rfolder in $Lfolder
+do
+rec="$Rfolder"
+break
+done
+else
+echo "Enter name of folder in 3D_images where Dicoms are stored"
+read rec
+fi
+
+
+
+cd /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/Anon_Dicom/$rec
+
+generate=$(ls -d)
+for listless in $generate
+do
+generate_list=$(ls $listless/IM*.dcm )
+	for list in $generate_list
+	do
+	Dicom="$list"
+	done
+
+mri_convert -it dicom -ot nii $Dicom /home/knight/ecog/DATA_FOLDER/$location/$patient/3D_Images/Anon_Dicom/$rec/"$patient"_MR.nii.gz
+done

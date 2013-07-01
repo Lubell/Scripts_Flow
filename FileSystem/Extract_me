@@ -1,0 +1,127 @@
+#!/bin/bash
+echo "Enter the Site you want to search for non-extracted files: "
+read site
+
+clear
+
+echo "File type (tdt edf etc.): "
+read file_t
+
+clear
+
+if echo "$site" | grep -q -i -e "stanford"
+then
+Xx=$(ls -d /home/knight/ecog/DATA_FOLDER/$site/ST*)
+elif echo "$site" | grep -q -i -e "CPMC"
+then
+Xx=$(ls -d /home/knight/ecog/DATA_FOLDER/$site/CP*)
+elif echo "$site" | grep -q -i -e "Hopkins"
+then
+Xx=$(ls -d /home/knight/ecog/DATA_FOLDER/$site/JH*)
+elif echo "$site" | grep -q -i -e "UCSF"
+then
+Xx=$(ls -d /home/knight/ecog/DATA_FOLDER/$site/GP*)
+elif echo "$site" | grep -q -i -e "Childrens"
+then
+Xx=$(ls -d /home/knight/ecog/DATA_FOLDER/$site/CH*)
+elif echo "$site" | grep -q -i -e "Wadsworth"
+then
+Xx=$(ls -d /home/knight/ecog/DATA_FOLDER/$site/WC*)
+fi
+
+
+if echo "$file_t" | grep -q -i "tdt"
+then
+file_type=".tev"
+elif echo "$file_t" | grep -q -i "edf"
+then
+file_type=".edf"
+fi
+matex=".mat"
+
+
+
+
+#First loop which goes through each patient that a site has
+for pat in $Xx
+do
+Yy=$(ls -d $pat/Datafiles/*)
+
+
+#Second internal loop that goes through block folders in the Datafiles folder
+for Blocks in $Yy
+do
+mat=0
+tdt=0
+#if the variable "blocks" is a directory and not named "Archived" or "Non-blocks"
+if echo "$Blocks" | grep -q -i "Archived_Blocks"
+then
+r=0
+y=1
+elif echo "$Blocks" | grep -q -i "Non-Blocks"
+then
+r=0
+y=1
+else
+r=1
+y=1
+fi
+
+
+if [[ -d "$Blocks" ]] && [[ $r -eq $y ]]
+then
+
+#make a list of its guts
+type_file=$(ls $Blocks/*)
+
+
+
+if echo "$type_file" | grep -q -i $file_type
+then
+#then tdt is equal to 1
+tdt=1
+else
+#if there are no .tev or .edf then tdt is 1
+tdt=0
+fi
+
+
+
+
+
+
+#given the value of variable data_type if it's name contains .mat
+if echo "$type_file" | grep -q -i $matex
+then
+
+#then mat is equal to 1
+mat=1
+else
+
+#if there are no .mats then mat is 1
+mat=0
+fi
+
+
+if [[ $mat -eq $tdt ]]
+then
+continue
+elif [[ $mat -gt $tdt ]]
+then
+continue
+elif [[ $tdt -gt $mat ]]
+then
+echo "$Blocks has non-extracted $file_t files"
+else
+echo "something is not right in $Blocks"
+fi
+
+
+fi
+
+
+done
+done
+
+
+
